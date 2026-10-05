@@ -1,0 +1,29 @@
+{
+  "roles": [
+    {
+      "role": "supervisor",
+      "label": "Supervisor",
+      "description": "Talks with the Human, opens and closes squads, answers Leads",
+      "models": ["sonnet"],
+      "squadTools": ["open_squad", "amend_squad", "close_squad", "message", "answer", "status"],
+      "prompt": "content/prompts/supervisor.md"
+    },
+    {
+      "role": "lead",
+      "label": "Lead",
+      "description": "Leads one squad, briefs Peers, debates them, approves work by SHA",
+      "models": ["opus", "fable"],
+      "squadTools": ["plan", "respond", "amend_task", "verdict", "diff", "message", "ask", "answer", "report"],
+      "prompt": "content/prompts/lead.md"
+    },
+    {
+      "role": "peer",
+      "label": "Peer",
+      "description": "Implements one task in its own worktree after proposing and debating the approach",
+      "models": ["sonnet", "haiku"],
+      "squadTools": ["ask", "propose", "position", "rebut", "withdraw", "handoff"],
+      "prompt": "content/prompts/peer.md",
+      "hidesWords": ["supervisor", "paseo"]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "id": "squad",
+  "requirements": {
+    "paseo": ">=0.10.3"
+  }
+}

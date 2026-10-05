@@ -1,0 +1,22 @@
+{
+  "id": "claude",
+  "baseProvider": "claude",
+  "binary": "claude",
+  "modeId": "default",
+  "knownTools": [
+    "Read", "Write", "Edit", "MultiEdit", "NotebookEdit", "Glob", "Grep", "LSP",
+    "Bash", "PowerShell", "Monitor", "TodoWrite", "TaskCreate", "TaskGet", "TaskUpdate", "TaskList", "TaskStop",
+    "WebFetch", "WebSearch", "Skill", "ToolSearch", "ListMcpResourcesTool", "ReadMcpResourceTool",
+    "EnterPlanMode", "ExitPlanMode", "EnterWorktree", "ExitWorktree", "CronCreate", "CronDelete", "CronList",
+    "ScheduleWakeup", "Workflow", "RemoteTrigger", "PushNotification",
+    "Agent", "Task", "AskUserQuestion", "SendMessage"
+  ],
+  "toolsArg": "tools",
+  "hcArgs": { "strict-mcp-config": null, "setting-sources": "project" },
+  "models": {
+    "fable": { "id": "claude-fable-5-1", "label": "Fable 5.1" },
+    "opus": { "id": "claude-opus-5-5", "label": "Opus 5.5" },
+    "sonnet": { "id": "claude-sonnet-5-5", "label": "Sonnet 5.5" },
+    "haiku": { "id": "claude-haiku-4-5", "label": "Haiku 4.5" }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "squad",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "paseo-plugin.json",
+    "index.server.ts",
+    "roles.json",
+    "content/",
+    "server/",
+    "shared/"
+  ],
+  "scripts": {
+    "pretypecheck": "node scripts/embed-content.mjs",
+    "pretest": "node scripts/embed-content.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "node .claude/skills/paseo-plugin-design/scripts/lint-plugin.mjs .",
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "devDependencies": {
+    "@getpaseo/plugin": "0.10.3",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "zod": "^4.4.3"
+  }
+}
