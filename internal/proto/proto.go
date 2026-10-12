@@ -44,11 +44,10 @@ const (
 	VerbWakeWait = "wake_wait"
 )
 
-// AdminVerbs are the verbs that need the admin token.
-var AdminVerbs = map[string]bool{VerbPing: true, VerbRegister: true, VerbView: true, VerbResolve: true,
-	VerbKill: true, VerbInterrupt: true, VerbResume: true, VerbTeamDown: true, VerbShutdown: true,
-	VerbHarnessEvent: true, VerbRelease: true, VerbWhy: true, VerbLog: true, VerbDoctor: true,
-	VerbModel: true, VerbGC: true}
+// ParticipantVerbs take a participant's token. Every other verb needs the admin token, one added
+// later too.
+var ParticipantVerbs = map[string]bool{VerbWhoami: true, VerbHeartbeat: true, VerbUnregister: true, VerbSend: true,
+	VerbInbox: true, VerbWho: true, VerbAgent: true, VerbWakeWait: true}
 
 // Request is one call.
 type Request struct {

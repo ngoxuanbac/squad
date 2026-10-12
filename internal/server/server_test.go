@@ -127,6 +127,7 @@ func TestServeVerbs(t *testing.T) {
 	// Admin verbs need the admin token; participant verbs a participant's.
 	refused(t, info, proto.VerbView, "nope", nil, "auth")
 	refused(t, info, proto.VerbWho, "nope", nil, "auth")
+	refused(t, info, "no_such_verb", "nope", nil, "auth") // closed unless listed
 	refused(t, info, "fly", admin, nil, "invalid")
 
 	var me struct{ ID, Name, Token, Team, Role string }

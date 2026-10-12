@@ -209,7 +209,7 @@ func writeJSON(w http.ResponseWriter, v any) {
 }
 
 func (s *srv) call(ctx context.Context, req proto.Request) (any, error) {
-	if proto.AdminVerbs[req.Op] && req.Token != s.admin {
+	if !proto.ParticipantVerbs[req.Op] && req.Token != s.admin {
 		return nil, &core.Error{Code: "auth", Msg: "admin token required"}
 	}
 	a, err := decode[proto.Args](req.Args)
