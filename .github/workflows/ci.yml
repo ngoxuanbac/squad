@@ -9,11 +9,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@v4 # the e2e contract test runs the plugin's own test with node
+      - uses: actions/setup-node@v7 # the e2e contract test runs the plugin's own test with node
         with:
           node-version: 24
       - name: plugin dependencies
@@ -23,7 +23,14 @@ jobs:
       - name: tests, every package above 80% coverage
         shell: bash
         run: |
-          go test -count=1 -cover ./... | tee cover.txt
+          code=0
+          go test -count=1 -cover ./... > cover.txt 2>&1 || code=$?
+          cat cover.txt
+          if [ $code -ne 0 ]; then # the failures as an annotation: readable without the log
+            msg=$(grep -E -- '--- FAIL|_test.go:[0-9]+:|^panic:|^FAIL' cover.txt | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=go test failed::$msg"
+            exit $code
+          fi
           awk '/coverage: [0-9.]+%/ && !/cmd\/squad/ {
                  for (i = 1; i <= NF; i++) if ($i == "coverage:") { p = $(i+1); sub("%", "", p) }
                  if (p + 0 < 80) { print "below 80%: " $0; bad = 1 }
