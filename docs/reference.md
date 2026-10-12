@@ -65,6 +65,7 @@ the positional arguments.
 | `SQUAD_HOME` | every command | Squad's home instead of `~/.squad` |
 | `CLAUDE_CODE_SESSION_ID` | `squad mcp` | Set by Claude Code. A session that registers again with the same id is the same participant (name, team, role, mail) |
 | `SQUAD_TOKEN` | `squad mcp` | Set by squad for a worker's MCP server: whose tools these are |
+| `SQUAD_HOOK_LOG` | `squad hook` | A file each hook appends its event and the JSON Claude passed it to, one line per hook: for seeing what Claude sends |
 
 Workers inherit the daemon's environment minus the variables of the session that started it
 (`CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_MESSAGING_*`, `PASEO_AGENT_ID`, …), plus
