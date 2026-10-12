@@ -75,7 +75,6 @@ func TestMailModel(t *testing.T) {
 		refused(t, err, code)
 	}
 
-
 	// Assign: only the member's lead; never across teams.
 	must(e.Send(lead.Token, SendArgs{To: "p2", Body: "Also look at pkg/c", Op: "assign"}))
 	e.mu.Lock()

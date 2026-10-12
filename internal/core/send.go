@@ -10,19 +10,19 @@ import (
 
 // SendArgs are the send tool's arguments.
 type SendArgs struct {
-	To          string `json:"to"`
-	Body        string `json:"body"`
-	Kind        string `json:"kind,omitempty"`     // a free label (handback, question, …); never read by squad
-	ReplyTo     string `json:"reply_to,omitempty"` // #N of mail the sender sent or got
-	Op          string `json:"op,omitempty"`       // assign (a task to a member that reports to the sender) | replace | remove (board)
-	Target      string `json:"target,omitempty"`   // board: #N of the pin to replace or remove
+	To      string `json:"to"`
+	Body    string `json:"body"`
+	Kind    string `json:"kind,omitempty"`     // a free label (handback, question, …); never read by squad
+	ReplyTo string `json:"reply_to,omitempty"` // #N of mail the sender sent or got
+	Op      string `json:"op,omitempty"`       // assign (a task to a member that reports to the sender) | replace | remove (board)
+	Target  string `json:"target,omitempty"`   // board: #N of the pin to replace or remove
 }
 
 // SendResult is what a send did.
 type SendResult struct {
-	Seq       int64  `json:"seq"` // the mail's #N
-	Held      bool   `json:"held,omitempty"`
-	Rule      string `json:"rule,omitempty"` // the rule that holds it
+	Seq  int64  `json:"seq"` // the mail's #N
+	Held bool   `json:"held,omitempty"`
+	Rule string `json:"rule,omitempty"` // the rule that holds it
 }
 
 // Text is the result as the model reads it.
