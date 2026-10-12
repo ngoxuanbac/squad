@@ -61,8 +61,8 @@ func TestOpenFreshIsLatest(t *testing.T) {
 			t.Errorf("no table %s", table)
 		}
 	}
-	if !columns(t, db, "participants")["harness"] {
-		t.Error("participants has no harness column")
+	if p := columns(t, db, "participants"); !p["harness"] || p["pid"] || columns(t, db, "mail")["client_msg_id"] {
+		t.Error("participants lacks harness, or a dropped column (6) is still there")
 	}
 	// Opening again changes nothing and does not fail.
 	db.Close()
