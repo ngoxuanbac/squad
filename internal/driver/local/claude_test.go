@@ -367,10 +367,14 @@ func TestStopKillsAHungWorker(t *testing.T) {
 
 // Detach starts a process that outlives its parent; it runs and exits on its own here.
 func TestDetach(t *testing.T) {
-	for _, detach := range []func(*exec.Cmd){Detach, DetachNoBreakaway} {
+	for i, detach := range []func(*exec.Cmd){Detach, DetachNoBreakaway} {
 		cmd := exec.Command(fakeClaude)
 		detach(cmd)
 		if err := cmd.Start(); err != nil {
+			if i == 0 { // a job that forbids breakaway (a CI runner's): ensureDaemon falls back to the next
+				t.Logf("Detach: %v", err)
+				continue
+			}
 			t.Fatal(err)
 		}
 		if err := cmd.Wait(); err != nil {

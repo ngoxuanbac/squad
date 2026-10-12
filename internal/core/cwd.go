@@ -25,14 +25,14 @@ func (e *Engine) bounded(root, from, cwd string) (string, error) {
 		return dir, nil
 	}
 	for _, r := range e.allowedRoots {
-		if within(filepath.Clean(r), dir) {
+		if within(r, dir) {
 			return dir, nil
 		}
 	}
 	out, err := exec.Command("git", "-C", root, "worktree", "list", "--porcelain").Output()
 	if err == nil {
 		for _, line := range strings.Split(string(out), "\n") {
-			if wt, ok := strings.CutPrefix(strings.TrimSpace(line), "worktree "); ok && within(filepath.Clean(filepath.FromSlash(wt)), dir) {
+			if wt, ok := strings.CutPrefix(strings.TrimSpace(line), "worktree "); ok && within(filepath.FromSlash(wt), dir) {
 				return dir, nil
 			}
 		}
@@ -40,16 +40,30 @@ func (e *Engine) bounded(root, from, cwd string) (string, error) {
 	return "", denyf("bounds", "cwd.bounds", "cwd %s is outside the team root %s, is not a git worktree of it, and is in none of spawn.allowed_roots", dir, root)
 }
 
+// within says whether dir is root or under it, as the file system sees them: symlinks and Windows
+// short (8.3) names resolved.
 func within(root, dir string) bool {
-	rel, err := filepath.Rel(root, dir)
+	rel, err := filepath.Rel(realPath(root), realPath(dir))
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-// cleanPath is a directory as squad compares them: cleaned, and case-folded on Windows.
+// cleanPath is a directory as squad compares them: its real path, case-folded on Windows.
 func cleanPath(p string) string {
-	p = filepath.Clean(p)
+	p = realPath(p)
 	if runtime.GOOS == "windows" {
 		p = strings.ToLower(p)
+	}
+	return p
+}
+
+// realPath is p with its symlinks and short names resolved, as far as it exists.
+func realPath(p string) string {
+	p = filepath.Clean(p)
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		return r
+	}
+	if parent := filepath.Dir(p); parent != p {
+		return filepath.Join(realPath(parent), filepath.Base(p))
 	}
 	return p
 }
