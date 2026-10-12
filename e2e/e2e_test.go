@@ -135,13 +135,15 @@ func (e *env) stop() {
 	}
 }
 
-// run runs the CLI; err carries its output when it exits non-zero.
+// run runs the CLI and returns its stdout; err carries both outputs when it exits non-zero.
 func (e *env) run(args ...string) (string, error) {
 	cmd := exec.Command(squadBin, args...)
 	cmd.Env = e.vars
-	out, err := cmd.CombinedOutput()
+	var stderr strings.Builder
+	cmd.Stderr = &stderr // apart: a warning there must not spoil the JSON a test reads
+	out, err := cmd.Output()
 	if err != nil {
-		return string(out), fmt.Errorf("squad %s: %v\n%s", strings.Join(args, " "), err, out)
+		return string(out), fmt.Errorf("squad %s: %v\n%s%s", strings.Join(args, " "), err, out, stderr.String())
 	}
 	return string(out), nil
 }
@@ -171,7 +173,10 @@ type member struct {
 func (e *env) ps() ps {
 	e.t.Helper()
 	var v ps
-	must(e.t, json.Unmarshal([]byte(e.squad("ps", "--json", "--no-start")), &v))
+	out := e.squad("ps", "--json", "--no-start")
+	if err := json.Unmarshal([]byte(out), &v); err != nil {
+		e.t.Fatalf("squad ps --json: %v:\n%q", err, out)
+	}
 	return v
 }
 
