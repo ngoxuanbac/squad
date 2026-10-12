@@ -14,7 +14,3 @@ Evidence
 - A claim of "done" comes with how it was checked: the command and its result, or the file and
   line. Say what you did not check.
 - For a bug fix, show a repro that fails before the fix and passes after it.
-
-Hand back
-- When you finish, tell the one who gave you the work what changed, how it was checked, and what is
-  left or needs a decision. Keep it short; they read many of these.
