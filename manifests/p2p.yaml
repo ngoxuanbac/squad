@@ -1,0 +1,19 @@
+# p2p: peers that talk freely and spawn more peers. The founder is a peer too.
+template: p2p
+summary: Peers that talk freely and may spawn more peers; no one owns the plan.
+auto_join_role: peer
+roles:
+  peer:
+    description: Owns what it takes on, says so to the others, and hands back what is true.
+    instructions_file: prompts/p2p/peer.md
+    tools: [send, inbox, who, agent]
+    can_spawn: [peer]
+    can_set_cwd: true
+    can_pin: true
+routing:
+  - {from: peer, to: peer}
+limits:
+  depth: 3
+  concurrency: 6
+  messages_per_participant_per_minute: 30
+  max_respawn_per_hour: none

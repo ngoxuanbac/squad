@@ -1,0 +1,18 @@
+# advisor: a taskforce of one. Read-only advice on a hard decision or a stalled approach, with the
+# check that would prove it wrong.
+template: advisor
+summary: "Read-only: one agent advises on a hard decision or a stalled approach, with a check that would prove it wrong."
+auto_join_role: advisor
+taskforce:
+  idle_for: 20m
+roles:
+  advisor:
+    description: Reads the evidence, gives one recommendation with its reasons and the check that would falsify it.
+    instructions_file: prompts/advisor/advisor.md
+    tools: [send, inbox, who]
+routing: []
+limits:
+  depth: 1
+  concurrency: 1
+  messages_per_participant_per_minute: 20
+  max_respawn_per_hour: none

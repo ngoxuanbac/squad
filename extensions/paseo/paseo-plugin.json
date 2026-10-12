@@ -1,0 +1,9 @@
+{
+  "id": "squad",
+  "name": "Squad",
+  "description": "Squad in Paseo: teams, members, solo sessions, events and member logs, as squad top shows them (read-only)",
+  "media": [],
+  "requirements": {
+    "paseo": ">=0.11.2"
+  }
+}

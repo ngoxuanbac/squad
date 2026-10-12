@@ -1,0 +1,26 @@
+# lead-peer: the founder is the lead; it owns the plan, splits it into scopes and judges results.
+template: lead-peer
+summary: A lead owns the plan and judges the results; peers own scopes and speak up with evidence.
+auto_join_role: lead
+roles:
+  lead:
+    description: Owns the plan, splits it into scopes with one owner each, judges the evidence and integrates.
+    instructions_file: prompts/lead-peer/lead.md
+    tools: [send, inbox, who, agent]
+    can_spawn: [peer]
+    can_set_cwd: true
+  peer:
+    description: Owns one scope and the judgement inside it; may question the premise with evidence.
+    instructions_file: prompts/lead-peer/peer.md
+    tools: [send, inbox, who]
+routing:
+  - {from: lead, to: peer}
+  - {from: peer, to: lead}
+  - {from: peer, to: peer}
+timers:
+  - {on: peer, silent_for: 20m, notify: reports_to}
+limits:
+  depth: 2
+  concurrency: 6
+  messages_per_participant_per_minute: 30
+  max_respawn_per_hour: none

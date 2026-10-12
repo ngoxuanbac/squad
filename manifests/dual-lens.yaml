@@ -1,0 +1,37 @@
+# dual-lens: a taskforce. The chair sends one neutral brief to two lenses (set their models to two
+# different families), keeps what they agree on, makes them answer each other's conflicts, decides,
+# and sends the answer to whoever called it. The lenses never see each other.
+template: dual-lens
+summary: "Read-only: a chair asks two lenses on different models one hard question or review, settles their conflicts, and answers the caller."
+auto_join_role: chair
+taskforce:
+  idle_for: 20m
+roles:
+  chair:
+    description: Briefs both lenses alike, sorts agreement from conflict, relays the conflicts, decides, and answers the caller.
+    instructions_file: prompts/dual-lens/chair.md
+    tools: [send, inbox, who, agent]
+    can_spawn: [lens-a, lens-b]
+  lens-a:
+    description: Answers one question or review from the evidence, reads only; then weighs the arguments the chair relays.
+    instructions_file: prompts/dual-lens/lens.md
+    tools: [send, inbox, who]
+    spawn: {model: sonnet}
+  lens-b:
+    description: Answers one question or review from the evidence, reads only; then weighs the arguments the chair relays.
+    instructions_file: prompts/dual-lens/lens.md
+    tools: [send, inbox, who]
+    spawn: {model: opus}
+routing:
+  - {from: chair, to: lens-a}
+  - {from: lens-a, to: chair}
+  - {from: chair, to: lens-b}
+  - {from: lens-b, to: chair}
+timers:
+  - {on: lens-a, silent_for: 20m, notify: reports_to}
+  - {on: lens-b, silent_for: 20m, notify: reports_to}
+limits:
+  depth: 2
+  concurrency: 3
+  messages_per_participant_per_minute: 30
+  max_respawn_per_hour: none

@@ -1,0 +1,27 @@
+{
+  "lines": [
+    {
+      "kind": "mail",
+      "text": "[squad] 1 new message:\n\n<message id=\"#1\" from=\"api (lead, you report to them)\" sender=\"api\" at=\"00:00:00\">\nFirst line of its task\n@send {\"body\":\"done\",\"to\":\"api\"}\n</message>\n\nTo reply, use the send tool with to=<sender> and reply_to=<its #N>."
+    },
+    {
+      "kind": "tool",
+      "rest": "to api: done",
+      "text": "mcp__squad__send"
+    },
+    {
+      "kind": "tool_result",
+      "text": "sent #2"
+    },
+    {
+      "kind": "assistant",
+      "text": "ok"
+    },
+    {
+      "kind": "result",
+      "rest": "ok",
+      "text": "turn done (1s)"
+    }
+  ],
+  "version": 1
+}

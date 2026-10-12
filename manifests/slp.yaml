@@ -1,0 +1,38 @@
+# slp: Supervisor - Lead - Peer. The human talks to the supervisor (the founding session); the
+# supervisor opens lanes, one lead each, often in its own git worktree; a lead splits its lane into
+# scopes for peers. A peer reaches only its lead, a lead its supervisor and its peers.
+# A lead may call a dual-lens or advisor taskforce itself (can_call_taskforce).
+template: slp
+summary: Lanes of work where the human steers a supervisor, each lane has a lead that owns its plan, and peers own separate scopes.
+auto_join_role: supervisor
+roles:
+  supervisor:
+    description: Settles goal and trade-offs with the human, opens lanes with a brief, watches for drift, brings back what the human must decide.
+    instructions_file: prompts/slp/supervisor.md
+    tools: [send, inbox, who, agent]
+    can_spawn: [lead]
+    can_set_cwd: true
+  lead:
+    description: Owns the lane's plan, splits it into scopes with one owner each, judges the evidence, and integrates.
+    instructions_file: prompts/slp/lead.md
+    tools: [send, inbox, who, agent]
+    can_spawn: [peer]
+    can_call_taskforce: [dual-lens, advisor]
+    can_set_cwd: true
+  peer:
+    description: Owns one scope and the judgement inside it; may question the premise with evidence; hands back what is true.
+    instructions_file: prompts/slp/peer.md
+    tools: [send, inbox, who]
+routing:
+  - {from: supervisor, to: lead}
+  - {from: lead, to: supervisor}
+  - {from: lead, to: peer}
+  - {from: peer, to: lead}
+timers:
+  - {on: peer, silent_for: 20m, notify: reports_to}
+  - {on: lead, silent_for: 30m, notify: reports_to}
+limits:
+  depth: 2
+  concurrency: 10
+  messages_per_participant_per_minute: 30
+  max_respawn_per_hour: none

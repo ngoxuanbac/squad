@@ -1,0 +1,163 @@
+{
+  "daemon": {
+    "pid": 1,
+    "started_at": "2026-01-01T00:00:00Z",
+    "version": "0.1.0-dev"
+  },
+  "events": [
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "kind": "found",
+      "team": "old",
+      "text": "old founded team old (p2p) as peer"
+    },
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "kind": "close",
+      "team": "old",
+      "text": "team old closed by its gate old"
+    },
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "kind": "found",
+      "team": "api",
+      "text": "api founded team api (lead-peer) as lead"
+    },
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "kind": "spawn",
+      "team": "api",
+      "text": "api spawned p1 (peer)"
+    },
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "kind": "send",
+      "team": "api",
+      "text": "p1 -> api #2: done"
+    },
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "kind": "spawn",
+      "team": "review",
+      "text": "api spawned review-advisor (advisor)"
+    },
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "kind": "found",
+      "team": "review",
+      "text": "api called taskforce review (advisor)"
+    }
+  ],
+  "notices": [],
+  "solos": [
+    {
+      "cwd": "/tmp/old",
+      "id": "p_a",
+      "kind": "session",
+      "last_active": "2026-01-01T00:00:00Z",
+      "model": "",
+      "name": "old",
+      "reports_to": "",
+      "role": "",
+      "status": "idle",
+      "task": "",
+      "unread": 0
+    },
+    {
+      "cwd": "/tmp/solo",
+      "id": "p_b",
+      "kind": "session",
+      "last_active": "2026-01-01T00:00:00Z",
+      "model": "",
+      "name": "solo",
+      "reports_to": "",
+      "role": "",
+      "status": "idle",
+      "task": "",
+      "unread": 0
+    }
+  ],
+  "summary": {
+    "sessions": 3,
+    "teams": 2,
+    "workers": 2,
+    "working": 0
+  },
+  "teams": [
+    {
+      "created_at": "2026-01-01T00:00:00Z",
+      "gate": "api",
+      "id": "t_c",
+      "members": [
+        {
+          "cwd": "/tmp/api",
+          "id": "p_d",
+          "kind": "session",
+          "last_active": "2026-01-01T00:00:00Z",
+          "model": "",
+          "name": "api",
+          "reports_to": "",
+          "role": "lead",
+          "status": "idle",
+          "task": "",
+          "unread": 0
+        },
+        {
+          "cwd": "/tmp/api",
+          "id": "p_e",
+          "kind": "worker",
+          "last_active": "2026-01-01T00:00:00Z",
+          "model": "",
+          "name": "p1",
+          "reports_to": "api",
+          "role": "peer",
+          "status": "idle",
+          "task": "First line of its task",
+          "unread": 0
+        }
+      ],
+      "name": "api",
+      "parent": "",
+      "root": "/tmp/api",
+      "status": "open",
+      "template": "lead-peer"
+    },
+    {
+      "created_at": "2026-01-01T00:00:00Z",
+      "gate": "review-advisor",
+      "id": "t_f",
+      "members": [
+        {
+          "cwd": "/tmp/api",
+          "id": "p_g",
+          "kind": "worker",
+          "last_active": "2026-01-01T00:00:00Z",
+          "model": "",
+          "name": "review-advisor",
+          "reports_to": "api",
+          "role": "advisor",
+          "status": "idle",
+          "task": "brief",
+          "unread": 0
+        }
+      ],
+      "name": "review",
+      "parent": "api",
+      "root": "/tmp/api",
+      "status": "open",
+      "template": "advisor"
+    },
+    {
+      "created_at": "2026-01-01T00:00:00Z",
+      "gate": "old",
+      "id": "t_h",
+      "members": [],
+      "name": "old",
+      "parent": "",
+      "root": "/tmp/old",
+      "status": "closed",
+      "template": "p2p"
+    }
+  ],
+  "version": 1
+}
