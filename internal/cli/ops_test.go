@@ -162,37 +162,23 @@ limits: {depth: 2, concurrency: 2}
 
 func TestRestartCommand(t *testing.T) {
 	daemon(t)
-	old, _ := daemonInfo()
+	oldInfo, _ := daemonInfo()
 	started := 0
+	old := startDaemon
 	startDaemon = func() error {
 		started++
 		go func() { _ = server.Serve("test", "squad") }()
-		deadline := time.Now().Add(10 * time.Second)
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			err := call(ctx, proto.VerbPing, "", nil, nil)
-			cancel()
-			if err == nil || time.Now().After(deadline) {
-				return err
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
+		return up()
 	}
-	t.Cleanup(func() { startDaemon = func() error { return ensureDaemon(self()) } })
+	t.Cleanup(func() { startDaemon = old })
 	code, out, _ := squad(t, "restart")
 	now, _ := daemonInfo()
-	if code != 0 || !strings.Contains(out, "squad daemon restarted") || now.Token == old.Token {
-		t.Fatalf("restart: %d %s (token %s -> %s)", code, out, old.Token, now.Token)
+	if code != 0 || !strings.Contains(out, "squad daemon restarted") || now.Token == oldInfo.Token {
+		t.Fatalf("restart: %d %s (token %s -> %s)", code, out, oldInfo.Token, now.Token)
 	}
 	// Down: it only starts it.
 	must(t, adminCall(proto.VerbShutdown, nil, nil))
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if _, err := daemonInfo(); err != nil || time.Now().After(deadline) {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitFor(func() bool { _, err := daemonInfo(); return err != nil })
 	code, out, _ = squad(t, "restart")
 	if code != 0 || !strings.Contains(out, "was not running") || started != 2 {
 		t.Fatalf("restart when down: %d %s", code, out)
@@ -243,20 +229,9 @@ func TestSetupRemove(t *testing.T) {
 func TestRestartRacedByAClient(t *testing.T) {
 	daemon(t)
 	old, _ := daemonInfo()
-	ping := func() error {
-		deadline := time.Now().Add(10 * time.Second)
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			err := call(ctx, proto.VerbPing, "", nil, nil)
-			cancel()
-			if err == nil || time.Now().After(deadline) {
-				return err
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
-	}
-	startDaemon = ping // only wait: the client below starts it
-	t.Cleanup(func() { startDaemon = func() error { return ensureDaemon(self()) } })
+	saved := startDaemon
+	startDaemon = up // only wait: the client below starts it
+	t.Cleanup(func() { startDaemon = saved })
 	// The client ends with the test, before SQUAD_HOME names the next test's home.
 	stop, ended := make(chan struct{}), make(chan struct{})
 	t.Cleanup(func() {

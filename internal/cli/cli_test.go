@@ -63,18 +63,8 @@ func daemon(t *testing.T) string {
 	dir := home(t)
 	done := make(chan error, 1)
 	go func() { done <- server.Serve("test", "squad") }()
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err := call(ctx, proto.VerbPing, "", nil, nil)
-		cancel()
-		if err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("daemon did not come up: %v", err)
-		}
-		time.Sleep(20 * time.Millisecond)
+	if err := up(); err != nil {
+		t.Fatalf("daemon did not come up: %v", err)
 	}
 	t.Cleanup(func() {
 		if adminCall(proto.VerbShutdown, nil, nil) == nil {
@@ -214,16 +204,12 @@ func TestPsTailAndWorkerCommands(t *testing.T) {
 	agent(t, lead, map[string]string{"action": "close", "team": "old"})
 
 	// The task reaches the worker's log.
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		_, out, _ := squad(t, "tail", "w1", "--no-start")
-		if strings.Contains(out, "fix the tests") && strings.Contains(out, "turn done") {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("tail never showed the task:\n%s", out)
-		}
-		time.Sleep(50 * time.Millisecond)
+	var out string
+	if !waitFor(func() bool {
+		_, out, _ = squad(t, "tail", "w1", "--no-start")
+		return strings.Contains(out, "fix the tests") && strings.Contains(out, "turn done")
+	}) {
+		t.Fatalf("tail never showed the task:\n%s", out)
 	}
 
 	code, out, _ := squad(t, "ps", "--no-start")
@@ -266,15 +252,17 @@ func TestPsTailAndWorkerCommands(t *testing.T) {
 		t.Fatalf("tail ghost: %d %s", code, errOut)
 	}
 
-	// tail -f prints what is appended, until stopped.
+	// tail -f prints what is appended, until stopped: both lines appended once it follows, which
+	// -n 1 alone would not show.
 	followStop = make(chan struct{})
 	logPath := core.WorkerLog(server.Dir(), resolve(t, "w1"))
 	go func() {
 		time.Sleep(200 * time.Millisecond)
 		f, _ := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0o600)
-		f.WriteString(`{"type":"assistant","message":{"content":"appended later"}}` + "\n")
+		f.WriteString(`{"type":"assistant","message":{"content":"appended one"}}` + "\n" +
+			`{"type":"assistant","message":{"content":"appended two"}}` + "\n")
 		f.Close()
-		time.Sleep(700 * time.Millisecond)
+		time.Sleep(400 * time.Millisecond) // more than one poll
 		close(followStop)
 	}()
 	code, out, _ = squad(t, "tail", "w1", "-n", "1", "-f", "--no-start")
@@ -282,7 +270,8 @@ func TestPsTailAndWorkerCommands(t *testing.T) {
 	if code != 0 {
 		t.Fatal(code)
 	}
-	want(t, out, "appended later")
+	want(t, out, "appended one")
+	want(t, out, "appended two")
 
 	code, out, _ = squad(t, "abort", "w1", "--no-start")
 	if code != 0 {
@@ -294,16 +283,11 @@ func TestPsTailAndWorkerCommands(t *testing.T) {
 		t.Fatal(code)
 	}
 	want(t, out, "stopping w1")
-	deadline = time.Now().Add(10 * time.Second)
-	for {
+	if !waitFor(func() bool {
 		_, out, _ = squad(t, "resume", "w1", "--no-start")
-		if strings.Contains(out, "resumed w1") {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("resume: %s", out)
-		}
-		time.Sleep(50 * time.Millisecond)
+		return strings.Contains(out, "resumed w1")
+	}) {
+		t.Fatalf("resume: %s", out)
 	}
 	var me struct{ Name string }
 	if err := call(context.Background(), proto.VerbWhoami, lead, nil, &me); err != nil {
@@ -483,4 +467,21 @@ func TestDiagCommands(t *testing.T) {
 		}
 	}
 	t.Fatal("nothing was held")
+}
+
+// waitFor polls ok until it holds, ten seconds at most: false when it never did.
+func waitFor(ok func() bool) bool {
+	for end := time.Now().Add(10 * time.Second); !ok(); time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(end) {
+			return false
+		}
+	}
+	return true
+}
+
+// up waits for the daemon to answer: the last ping's error when it never did.
+func up() error {
+	var err error
+	waitFor(func() bool { err = pingDaemon(time.Second); return err == nil })
+	return err
 }

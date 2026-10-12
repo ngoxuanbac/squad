@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/bacnx/squad/internal/core"
 	"github.com/bacnx/squad/internal/proto"
@@ -237,12 +236,8 @@ func TestMCPWakesIdleSession(t *testing.T) {
 	if err := call(context.Background(), proto.VerbSend, other, core.SendArgs{To: name, Body: "wake up"}, &sent); err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(10 * time.Second)
-	for len(sock.got()) == 0 {
-		if time.Now().After(deadline) {
-			t.Fatal("no nudge")
-		}
-		time.Sleep(20 * time.Millisecond)
+	if !waitFor(func() bool { return len(sock.got()) > 0 }) {
+		t.Fatal("no nudge")
 	}
 	if !strings.Contains(sock.got()[0], "[squad] wake #1") {
 		t.Fatal(sock.got())

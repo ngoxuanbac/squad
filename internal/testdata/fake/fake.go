@@ -10,8 +10,11 @@ import (
 )
 
 // Build builds the fake claude into a new temporary directory: its path, and the removal of
-// that directory once the tests are done.
+// that directory once the tests are done. SQUAD_FAKE_CLAUDE names one built already.
 func Build() (path string, done func()) {
+	if p := os.Getenv("SQUAD_FAKE_CLAUDE"); p != "" { // built already: tests built for another system
+		return p, func() {}
+	}
 	dir, err := os.MkdirTemp("", "squad-fake")
 	if err != nil {
 		panic(err)

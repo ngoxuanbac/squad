@@ -50,7 +50,9 @@ func TestGoneMemberWokenByMail(t *testing.T) {
 	if claude.count() != 2 {
 		t.Fatal("newer mail did not wake it")
 	}
-	// Its person opens the session again: it is a session again, its worker stopped.
+	// Its person opens the session again (once the woken run's turn acked its mail): it is a session
+	// again, its worker stopped.
+	eventually(t, e, "the woken run's ack", func() bool { return unackedToLocked(e, m.ID) == 0 })
 	again := hooked(t, e, "M")
 	if again.ID != m.ID || again.Kind != KindSession {
 		t.Fatalf("take back: %+v", again)
