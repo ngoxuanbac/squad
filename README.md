@@ -1,6 +1,6 @@
 # Squad
 
-Đội agent Claude Code chạy native trên **Windows, Linux và macOS**, xem và theo dõi ngay trong **Paseo**.
+Đội agent Claude Code chạy native trên **Windows và Linux** (macOS chưa hỗ trợ), xem và theo dõi ngay trong **Paseo**.
 Một binary Go + một file SQLite, không gì chạy trên cloud.
 
 - **Mailbox chung**: agent nhắn nhau bằng tool `send`/`inbox`. Mail chỉ được ack khi lượt (turn) xử lý nó hoàn tất; worker crash, bị kill hay máy reboot thì mail được gửi lại.
@@ -11,7 +11,7 @@ Một binary Go + một file SQLite, không gì chạy trên cloud.
 ## Cài đặt
 
 ```sh
-go build -o squad.exe ./cmd/squad     # Linux/macOS: -o squad; đặt vào PATH
+go build -o squad.exe ./cmd/squad     # Linux: -o squad; đặt vào PATH
 squad setup claude                    # thêm MCP server "squad" (user scope) vào Claude Code
 squad setup paseo                     # cài plugin vào Paseo (>= 0.11.2), rồi reload app
 squad setup                           # xem trạng thái
