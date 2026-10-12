@@ -5,12 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/bacnx/squad/internal/testdata/fake"
 
 	"github.com/bacnx/squad/internal/driver"
 )
@@ -18,19 +19,10 @@ import (
 var fakeClaude string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "squad-local")
-	if err != nil {
-		panic(err)
-	}
-	fakeClaude = filepath.Join(dir, "claude")
-	if runtime.GOOS == "windows" {
-		fakeClaude += ".exe"
-	}
-	if out, err := exec.Command("go", "build", "-o", fakeClaude, "../../core/testdata/fakeclaude").CombinedOutput(); err != nil {
-		panic(string(out))
-	}
+	var done func()
+	fakeClaude, done = fake.Build()
 	code := m.Run()
-	os.RemoveAll(dir)
+	done()
 	os.Exit(code)
 }
 

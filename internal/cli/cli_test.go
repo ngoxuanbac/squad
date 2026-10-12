@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bacnx/squad/internal/testdata/fake"
 
 	"github.com/bacnx/squad/internal/core"
 	"github.com/bacnx/squad/internal/driver/local"
@@ -30,25 +30,15 @@ func TestMain(m *testing.M) {
 	if len(os.Args) > 1 && os.Args[1] == "serve" { // started as the daemon (TestEnsureDaemonStarts)
 		os.Exit(Main(os.Args[1:]))
 	}
-	dir, err := os.MkdirTemp("", "squad-cli")
-	if err != nil {
-		panic(err)
-	}
-	exe := ""
-	if runtime.GOOS == "windows" {
-		exe = ".exe"
-	}
-	fakeBin = filepath.Join(dir, "bin")
-	fakeClaude = filepath.Join(fakeBin, "claude"+exe)
-	if out, err := exec.Command("go", "build", "-o", fakeClaude, "../core/testdata/fakeclaude").CombinedOutput(); err != nil {
-		panic(string(out))
-	}
+	var done func()
+	fakeClaude, done = fake.Build()
+	fakeBin = filepath.Dir(fakeClaude) // the fake as claude, and as paseo
 	b, _ := os.ReadFile(fakeClaude)
-	if err := os.WriteFile(filepath.Join(fakeBin, "paseo"+exe), b, 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(fakeBin, "paseo"+filepath.Ext(fakeClaude)), b, 0o700); err != nil {
 		panic(err)
 	}
 	code := m.Run()
-	os.RemoveAll(dir)
+	done()
 	os.Exit(code)
 }
 

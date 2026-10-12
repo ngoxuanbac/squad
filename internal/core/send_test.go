@@ -68,8 +68,7 @@ func TestMailModel(t *testing.T) {
 		t.Fatal("reply_to not rendered")
 	}
 	// reply_to must be mail the sender sent or got.
-	_, err := e.Send(p2, SendArgs{To: lead.Name, Body: "me too", ReplyTo: fmt.Sprintf("#%d", r.Seq)})
-	refusedRule(t, err, "reply_to.not_in_view")
+	refuses(t, "reply_to.not_in_view")(e.Send(p2, SendArgs{To: lead.Name, Body: "me too", ReplyTo: fmt.Sprintf("#%d", r.Seq)}))
 	for ref, code := range map[string]string{"#0": "invalid", "abc": "invalid", "#999999": "not_found"} {
 		_, err := e.Send(p1, SendArgs{To: lead.Name, Body: "x", ReplyTo: ref})
 		refused(t, err, code)
@@ -83,23 +82,18 @@ func TestMailModel(t *testing.T) {
 	if q.Task != "Also look at pkg/c" {
 		t.Fatalf("assigned task %q", q.Task)
 	}
-	_, err = e.Send(p1, SendArgs{To: "p2", Body: "do this", Op: "assign"})
-	refusedRule(t, err, "assign.not_reports_to")
+	refuses(t, "assign.not_reports_to")(e.Send(p1, SendArgs{To: "p2", Body: "do this", Op: "assign"}))
 	solo := must(e.RegisterSession(t.TempDir(), "", "", ""))
-	_, err = e.Send(solo.Token, SendArgs{To: lead.Name, Body: "x", Op: "assign"})
-	refused(t, err, "invalid")
+	refuses(t, "invalid")(e.Send(solo.Token, SendArgs{To: lead.Name, Body: "x", Op: "assign"}))
 
 	// Shapes and reserved addresses.
 	for _, a := range []SendArgs{{To: "p2", Body: "x", Target: "#1"}, {To: "p2", Body: "x", Op: "replace"}, {To: "p2"}, {Body: "x"}} {
 		_, err := e.Send(lead.Token, a)
 		refused(t, err, "invalid")
 	}
-	_, err = e.Send(lead.Token, SendArgs{To: "notify", Body: "x"})
-	refusedRule(t, err, "routing.notify")
-	_, err = e.Send(lead.Token, SendArgs{To: "engine", Body: "x"})
-	refusedRule(t, err, "visibility.unknown_target")
-	_, err = e.Send(lead.Token, SendArgs{To: lead.Name, Body: "x"})
-	refused(t, err, "invalid")
+	refuses(t, "routing.notify")(e.Send(lead.Token, SendArgs{To: "notify", Body: "x"}))
+	refuses(t, "visibility.unknown_target")(e.Send(lead.Token, SendArgs{To: "engine", Body: "x"}))
+	refuses(t, "invalid")(e.Send(lead.Token, SendArgs{To: lead.Name, Body: "x"}))
 
 	// Labels: a solo, another team, the engine.
 	if _, l := e.label(nil, solo.ID); l != solo.Name+" (solo)" {
@@ -113,14 +107,6 @@ func TestMailModel(t *testing.T) {
 	}
 	if _, l := e.label(nil, "p_gone"); l != "p_gone (solo)" {
 		t.Fatal(l)
-	}
-}
-
-func refusedRule(t *testing.T, err error, rule string) {
-	t.Helper()
-	ce, ok := err.(*Error)
-	if !ok || ce.Rule != rule {
-		t.Fatalf("want refusal by %s, got %v", rule, err)
 	}
 }
 
@@ -151,10 +137,8 @@ func TestRoutingRulesCcAndHold(t *testing.T) {
 	d1 := tokenOf(t, e, "d1")
 
 	// The first matching rule decides: an allow:false before an allow denies with its index.
-	_, err := e.Send(d1, SendArgs{To: "d2", Body: "x"})
-	refusedRule(t, err, "routing[3]")
-	_, err = e.Send(tokenOf(t, e, "q1"), SendArgs{To: lead.Name, Body: "x"})
-	refusedRule(t, err, "routing.no_rule")
+	refuses(t, "routing[3]")(e.Send(d1, SendArgs{To: "d2", Body: "x"}))
+	refuses(t, "routing.no_rule")(e.Send(tokenOf(t, e, "q1"), SendArgs{To: lead.Name, Body: "x"}))
 
 	// cc: every other member of the rule's cc roles gets a copy, marked as one.
 	r := must(e.Send(d1, SendArgs{To: lead.Name, Body: "handback", Kind: "handback"}))
@@ -204,15 +188,11 @@ func TestRoutingRulesCcAndHold(t *testing.T) {
 	if msgs := must(e.Inbox(context.Background(), lead.Token, 0)); len(msgs) != 1 || msgs[0].Body != "three" {
 		t.Fatalf("after release: %+v", msgs)
 	}
-	_, err = e.Release(fmt.Sprintf("#%d", h.Seq))
-	refused(t, err, "invalid") // not held any more
-	_, err = e.Release("#999999")
-	refused(t, err, "not_found")
-	_, err = e.Release("")
-	refused(t, err, "invalid")
+	refuses(t, "invalid")(e.Release(fmt.Sprintf("#%d", h.Seq))) // not held any more
+	refuses(t, "not_found")(e.Release("#999999"))
+	refuses(t, "invalid")(e.Release(""))
 	must(e.TeamDown(lead.Name))
-	_, err = e.Release(fmt.Sprintf("#%d", h2.Seq))
-	refusedRule(t, err, "team.closed")
+	refuses(t, "team.closed")(e.Release(fmt.Sprintf("#%d", h2.Seq)))
 }
 
 func TestBoard(t *testing.T) {
@@ -220,12 +200,10 @@ func TestBoard(t *testing.T) {
 	writeTemplate(t, e, "rt", routingTemplate)
 	lead := must(e.RegisterSession(t.TempDir(), "", "", "claude"))
 	solo := must(e.RegisterSession(t.TempDir(), "", "", "claude"))
-	_, err := e.Send(solo.Token, SendArgs{To: "board", Body: "x"})
-	refusedRule(t, err, "can_pin")
+	refuses(t, "can_pin")(e.Send(solo.Token, SendArgs{To: "board", Body: "x"}))
 	must(e.Agent(lead.Token, AgentArgs{Action: "found", Template: "rt"}))
 	must(e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "dev", Name: "d1", Task: "t"}))
-	_, err = e.Send(tokenOf(t, e, "d1"), SendArgs{To: "board", Body: "x"})
-	refusedRule(t, err, "can_pin")
+	refuses(t, "can_pin")(e.Send(tokenOf(t, e, "d1"), SendArgs{To: "board", Body: "x"}))
 
 	if text := must(e.BoardText(lead.Token)); text != "Nothing in this view." {
 		t.Fatal(text)
@@ -237,12 +215,10 @@ func TestBoard(t *testing.T) {
 		_, _ = e.db.Exec(`INSERT INTO mail(team_id,from_id,to_id,body,created_at) VALUES(?,?,?,?,?)`, teamID, lead.ID, AddrBoard, fmt.Sprint("pin ", i), "2000-01-01T00:00:00Z")
 		e.mu.Unlock()
 	}
-	_, err = e.Send(lead.Token, SendArgs{To: "board", Body: "one too many"})
-	refusedRule(t, err, "board.full")
+	refuses(t, "board.full")(e.Send(lead.Token, SendArgs{To: "board", Body: "one too many"}))
 	// replace keeps the count; remove frees a place.
 	rep := must(e.Send(lead.Token, SendArgs{To: "board", Body: "Plan: ship on Monday", Op: "replace", Target: fmt.Sprintf("#%d", first.Seq)}))
-	_, err = e.Send(lead.Token, SendArgs{To: "board", Op: "remove", Target: fmt.Sprintf("#%d", first.Seq)})
-	refusedRule(t, err, "board.target_not_live") // replaced already
+	refuses(t, "board.target_not_live")(e.Send(lead.Token, SendArgs{To: "board", Op: "remove", Target: fmt.Sprintf("#%d", first.Seq)})) // replaced already
 	must(e.Send(lead.Token, SendArgs{To: "board", Op: "remove", Target: fmt.Sprintf("#%d", rep.Seq)}))
 	must(e.Send(lead.Token, SendArgs{To: "board", Body: "now it fits"}))
 	text := must(e.BoardText(lead.Token))
@@ -264,8 +240,7 @@ func TestBoard(t *testing.T) {
 	if r.Seq == 0 {
 		t.Fatal("reply to a pin")
 	}
-	_, err = e.BoardText("bad")
-	refused(t, err, "auth")
+	refuses(t, "auth")(e.BoardText("bad"))
 }
 
 func mustTeam(e *Engine, id string) string {

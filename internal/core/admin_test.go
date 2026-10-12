@@ -24,26 +24,21 @@ func TestAdminOps(t *testing.T) {
 	if p := must(e.Resolve(mustID(e, "p1"))); p.Name != "p1" {
 		t.Fatal("resolve by id")
 	}
-	_, err := e.Resolve("nobody")
-	refused(t, err, "not_found")
+	refuses(t, "not_found")(e.Resolve("nobody"))
 
 	if out := must(e.Interrupt("p1")); !strings.Contains(out, "interrupted") {
 		t.Fatal(out)
 	}
-	_, err = e.Interrupt(lead.Name)
-	refused(t, err, "invalid")
-	_, err = e.Kill(lead.Name)
-	refused(t, err, "invalid")
-	_, err = e.Resume(lead.Name)
-	refused(t, err, "invalid")
+	refuses(t, "invalid")(e.Interrupt(lead.Name))
+	refuses(t, "invalid")(e.Kill(lead.Name))
+	refuses(t, "invalid")(e.Resume(lead.Name))
 
 	must(e.Kill("p1"))
 	eventually(t, e, "p1 stopped", func() bool { return e.runs[mustID(e, "p1")] == nil })
 	if out := must(e.Kill("p1")); !strings.Contains(out, "not running") {
 		t.Fatal(out)
 	}
-	_, err = e.Interrupt("p1")
-	refused(t, err, "invalid")
+	refuses(t, "invalid")(e.Interrupt("p1"))
 	must(e.Resume("p1"))
 	if claude.count() != 2 || !claude.last().Resume {
 		t.Fatal("resume did not start the worker again")
@@ -52,11 +47,9 @@ func TestAdminOps(t *testing.T) {
 		t.Fatalf("resume of a running worker: %s", out)
 	}
 
-	_, err = e.TeamDown("nope")
-	refused(t, err, "not_found")
+	refuses(t, "not_found")(e.TeamDown("nope"))
 	must(e.TeamDown("api"))
-	_, err = e.Resume("p1")
-	refused(t, err, "closed")
+	refuses(t, "closed")(e.Resume("p1"))
 }
 
 func TestWhoAndTeamText(t *testing.T) {
@@ -90,8 +83,7 @@ func TestWhoAndTeamText(t *testing.T) {
 	if text := must(e.Agent(solo.Token, AgentArgs{Action: "team"})); !strings.Contains(text, "no team") {
 		t.Errorf("team as solo: %s", text)
 	}
-	_, err := e.Who("bad-token")
-	refused(t, err, "auth")
+	refuses(t, "auth")(e.Who("bad-token"))
 }
 
 func TestStopFor(t *testing.T) {
@@ -103,10 +95,8 @@ func TestStopFor(t *testing.T) {
 	must(e.Agent(l1, AgentArgs{Action: "spawn", Role: "peer", Name: "p1", Task: "t"}))
 	must(e.Agent(sup.Token, AgentArgs{Action: "spawn", Role: "lead", Name: "l2", Task: "t"}))
 
-	_, err := e.Agent(l1, AgentArgs{Action: "stop", Name: "l2"})
-	refused(t, err, "permission")
-	_, err = e.Agent(l1, AgentArgs{Action: "stop", Name: "nobody"})
-	refused(t, err, "not_found")
+	refuses(t, "permission")(e.Agent(l1, AgentArgs{Action: "stop", Name: "l2"}))
+	refuses(t, "not_found")(e.Agent(l1, AgentArgs{Action: "stop", Name: "nobody"}))
 	must(e.Agent(l1, AgentArgs{Action: "stop", Name: "p1"})) // its own worker
 	must(e.Agent(sup.Token, AgentArgs{Action: "stop", Name: "l2"}))
 	eventually(t, e, "stopped", func() bool { return len(e.runs) == 1 })
@@ -158,16 +148,13 @@ func TestAgentRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("templates need no agent tool: %v", err)
 	}
-	_, err = e.Agent(p1, AgentArgs{Action: "spawn", Role: "peer", Task: "t"})
-	refused(t, err, "permission") // peer has no agent tool
-	_, err = e.Agent(solo.Token, AgentArgs{Action: "close", Team: "lead"})
-	refused(t, err, "permission")
+	refuses(t, "permission")(e.Agent(p1, AgentArgs{Action: "spawn", Role: "peer", Task: "t"})) // peer has no agent tool
+	refuses(t, "permission")(e.Agent(solo.Token, AgentArgs{Action: "close", Team: "lead"}))
 	// A worker cannot found a team.
 	e.mu.Lock()
 	_, _ = e.db.Exec(`UPDATE participants SET team_id='' WHERE name='p1'`)
 	e.mu.Unlock()
-	_, err = e.Agent(p1, AgentArgs{Action: "found", Template: "p2p"})
-	refused(t, err, "invalid")
+	refuses(t, "invalid")(e.Agent(p1, AgentArgs{Action: "found", Template: "p2p"}))
 }
 
 func TestSpawnLimits(t *testing.T) {
@@ -195,15 +182,11 @@ limits: {depth: 2, concurrency: 2, messages_per_participant_per_minute: 3, max_r
 		t.Fatalf("cwd not used: %s", out)
 	}
 	p1 := tokenOf(t, e, "p1")
-	_, err := e.Agent(p1, AgentArgs{Action: "spawn", Role: "peer", Task: "t", Cwd: "sub"})
-	refused(t, err, "permission") // peer has no can_set_cwd
+	refuses(t, "permission")(e.Agent(p1, AgentArgs{Action: "spawn", Role: "peer", Task: "t", Cwd: "sub"})) // peer has no can_set_cwd
 	must(e.Agent(p1, AgentArgs{Action: "spawn", Role: "peer", Name: "p2", Task: "t"}))
-	_, err = e.Agent(tokenOf(t, e, "p2"), AgentArgs{Action: "spawn", Role: "peer", Task: "t"})
-	refused(t, err, "limit") // depth 2
-	_, err = e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Task: "t"})
-	refused(t, err, "limit") // concurrency 2
-	_, err = e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Task: "t", Cwd: t.TempDir()})
-	refused(t, err, "bounds")
+	refuses(t, "limit")(e.Agent(tokenOf(t, e, "p2"), AgentArgs{Action: "spawn", Role: "peer", Task: "t"})) // depth 2
+	refuses(t, "limit")(e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Task: "t"}))          // concurrency 2
+	refuses(t, "bounds")(e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Task: "t", Cwd: t.TempDir()}))
 
 	must(e.Send(lead.Token, SendArgs{To: "p1", Body: "1"}))
 	must(e.Send(lead.Token, SendArgs{To: "p1", Body: "2"}))
@@ -279,16 +262,11 @@ func TestSetModel(t *testing.T) {
 	must(e.Agent(lead.Token, AgentArgs{Action: "found", Template: "lead-peer", Name: "api"}))
 	must(e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Name: "w1", Task: "t"}))
 
-	_, err := e.SetModel("w1", "", "")
-	refused(t, err, "invalid")
-	_, err = e.SetModel(lead.Name, "opus", "")
-	refused(t, err, "invalid") // a session
-	_, err = e.SetModel("ghost", "opus", "")
-	refused(t, err, "not_found")
-	_, err = e.SetModel("w1", "bad", "")
-	refused(t, err, "invalid")
-	_, err = e.SetModel("w1", "", "turbo") // a level the harness does not run
-	refused(t, err, "invalid")
+	refuses(t, "invalid")(e.SetModel("w1", "", ""))
+	refuses(t, "invalid")(e.SetModel(lead.Name, "opus", "")) // a session
+	refuses(t, "not_found")(e.SetModel("ghost", "opus", ""))
+	refuses(t, "invalid")(e.SetModel("w1", "bad", ""))
+	refuses(t, "invalid")(e.SetModel("w1", "", "turbo")) // a level the harness does not run
 	if p := pOf(t, e, "w1"); p.Model == "bad" {
 		t.Fatal("a refused model was stored")
 	}
@@ -323,8 +301,7 @@ func TestAllowedRootsAndSharedPrompts(t *testing.T) {
 	if dir, err := e.bounded(root, root, filepath.Join(extra, "sub")); err != nil || dir != filepath.Join(extra, "sub") {
 		t.Fatalf("allowed root refused: %q %v", dir, err)
 	}
-	_, err = e.bounded(root, root, t.TempDir())
-	refusedRule(t, err, "cwd.bounds")
+	refuses(t, "cwd.bounds")(e.bounded(root, root, t.TempDir()))
 
 	// A solo session's card at its start, then a worker's role card.
 	r := ev(t, e, HarnessEventArgs{Key: "S", Harness: "claude", Event: HarnessSessionStart, Cwd: root, Source: "startup"})

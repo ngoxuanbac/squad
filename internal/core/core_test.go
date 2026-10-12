@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bacnx/squad/internal/testdata/fake"
 
 	"github.com/bacnx/squad/internal/driver"
 	"github.com/bacnx/squad/internal/driver/local"
@@ -19,19 +19,10 @@ import (
 var fakeClaude string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "squad-fake")
-	if err != nil {
-		panic(err)
-	}
-	fakeClaude = filepath.Join(dir, "claude")
-	if runtime.GOOS == "windows" {
-		fakeClaude += ".exe"
-	}
-	if out, err := exec.Command("go", "build", "-o", fakeClaude, "./testdata/fakeclaude").CombinedOutput(); err != nil {
-		panic(string(out))
-	}
+	var done func()
+	fakeClaude, done = fake.Build()
 	code := m.Run()
-	os.RemoveAll(dir)
+	done()
 	os.Exit(code)
 }
 
@@ -68,12 +59,18 @@ func must[T any](v T, err error) T {
 	return v
 }
 
-func refused(t *testing.T, err error, code string) {
+// refused checks that err is a refusal with code or rule want.
+func refused(t *testing.T, err error, want string) {
 	t.Helper()
 	var ce *Error
-	if !errors.As(err, &ce) || ce.Code != code {
-		t.Fatalf("want refusal %q, got %v", code, err)
+	if !errors.As(err, &ce) || ce.Code != want && ce.Rule != want {
+		t.Fatalf("want refusal %q, got %v", want, err)
 	}
+}
+
+// refuses is refused for a call's results: refuses(t, "routing")(e.Send(tok, a)).
+func refuses(t *testing.T, want string) func(any, error) {
+	return func(_ any, err error) { t.Helper(); refused(t, err, want) }
 }
 
 func tokenOf(t *testing.T, e *Engine, name string) string {
@@ -243,19 +240,16 @@ func TestCrossTeamGate(t *testing.T) {
 	lead := tokenOf(t, e, "lead-a")
 	must(e.Agent(lead, AgentArgs{Action: "spawn", Template: "dual-lens", Name: "review", Task: "t"}))
 	must(e.Agent(tokenOf(t, e, "review-chair"), AgentArgs{Action: "spawn", Role: "lens-a", Task: "t"}))
-	_, err := e.Send(tokenOf(t, e, "lens-a"), SendArgs{To: "lead-a", Body: "psst"})
-	refused(t, err, "not_gate")
+	refuses(t, "not_gate")(e.Send(tokenOf(t, e, "lens-a"), SendArgs{To: "lead-a", Body: "psst"}))
 
 	solo := must(e.RegisterSession(t.TempDir(), "", "", ""))
-	_, err = e.Send(solo.Token, SendArgs{To: "lead-a", Body: "hi"})
-	refused(t, err, "not_gate")
+	refuses(t, "not_gate")(e.Send(solo.Token, SendArgs{To: "lead-a", Body: "hi"}))
 	must(e.Send(solo.Token, SendArgs{To: "api", Body: "can you look at issue 12?"}))
 	if msgs := must(e.Inbox(context.Background(), sup.Token, 0)); len(msgs) != 1 || msgs[0].From != solo.Name {
 		t.Fatalf("supervisor inbox: %+v", msgs)
 	}
 
-	_, err = e.Agent(sup.Token, AgentArgs{Action: "close", Team: "review"})
-	refused(t, err, "permission")
+	refuses(t, "permission")(e.Agent(sup.Token, AgentArgs{Action: "close", Team: "review"}))
 	must(e.Agent(sup.Token, AgentArgs{Action: "close"}))
 	for _, tm := range must(e.View(0)).Teams {
 		if tm.Status != TeamClosed {

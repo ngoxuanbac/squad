@@ -65,7 +65,7 @@ func TestAdmit(t *testing.T) {
 	for _, c := range cases {
 		_, err := e.Agent(c.token, c.args)
 		if c.rule != "" {
-			refusedRule(t, err, c.rule)
+			refused(t, err, c.rule)
 		} else if err == nil {
 			t.Fatalf("%+v accepted", c.args)
 		}
@@ -76,7 +76,7 @@ func TestAdmit(t *testing.T) {
 	own, _ := e.team(w.TeamID)
 	_, err := e.admit(w, own, AgentArgs{Name: here.Name, Role: "peer"})
 	e.mu.Unlock()
-	refusedRule(t, err, "admit.headless")
+	refused(t, err, "admit.headless")
 
 	out := must(e.Agent(lead.Token, AgentArgs{Action: "admit", Name: here.Name, Role: "peer"}))
 	if !strings.Contains(out, "admitted "+here.Name+" as peer") {
@@ -172,14 +172,10 @@ func TestReopenRules(t *testing.T) {
 
 	other := must(e.RegisterSession(root, "", "", "claude"))
 	away := must(e.RegisterSession(t.TempDir(), "", "", "claude"))
-	_, err := e.Agent(other.Token, AgentArgs{Action: "reopen"})
-	refused(t, err, "invalid")
-	_, err = e.Agent(other.Token, AgentArgs{Action: "reopen", Team: "nope"})
-	refused(t, err, "not_found")
-	_, err = e.Agent(away.Token, AgentArgs{Action: "reopen", Team: "api"})
-	refusedRule(t, err, "reopen.not_at_root")
-	_, err = e.Agent(other.Token, AgentArgs{Action: "reopen", Team: "adv"})
-	refused(t, err, "invalid") // a taskforce
+	refuses(t, "invalid")(e.Agent(other.Token, AgentArgs{Action: "reopen"}))
+	refuses(t, "not_found")(e.Agent(other.Token, AgentArgs{Action: "reopen", Team: "nope"}))
+	refuses(t, "reopen.not_at_root")(e.Agent(away.Token, AgentArgs{Action: "reopen", Team: "api"}))
+	refuses(t, "invalid")(e.Agent(other.Token, AgentArgs{Action: "reopen", Team: "adv"})) // a taskforce
 
 	out := must(e.Agent(other.Token, AgentArgs{Action: "reopen", Team: "api"}))
 	for _, want := range []string{"Reopened team api (template lead-peer); you are " + other.Name + " (lead), its gate.",
@@ -192,10 +188,8 @@ func TestReopenRules(t *testing.T) {
 	if api.Status != TeamOpen || api.GateID != other.ID || pOf(t, e, "w1").SpawnedBy != other.ID || pOf(t, e, "w1").Status != StatusStopped {
 		t.Fatalf("reopened: %+v", api)
 	}
-	_, err = e.Agent(other.Token, AgentArgs{Action: "reopen", Team: "api"})
-	refusedRule(t, err, "reopen.not_solo")
-	_, err = e.Agent(old.Token, AgentArgs{Action: "reopen", Team: "api"})
-	refused(t, err, "invalid") // open
+	refuses(t, "reopen.not_solo")(e.Agent(other.Token, AgentArgs{Action: "reopen", Team: "api"}))
+	refuses(t, "invalid")(e.Agent(old.Token, AgentArgs{Action: "reopen", Team: "api"})) // open
 	// The workers stay stopped until the gate resumes them.
 	must(e.Agent(other.Token, AgentArgs{Action: "resume", Name: "w1"}))
 	if pOf(t, e, "w1").Status == StatusStopped {
@@ -207,25 +201,21 @@ func TestCloseRules(t *testing.T) {
 	e := memEngine(t, &memRuntime{name: "claude"})
 	root := t.TempDir()
 	lead := must(e.RegisterSession(root, "", "", "claude"))
-	_, err := e.Agent(lead.Token, AgentArgs{Action: "close"})
-	refused(t, err, "invalid") // solo
+	refuses(t, "invalid")(e.Agent(lead.Token, AgentArgs{Action: "close"})) // solo
 	must(e.Agent(lead.Token, AgentArgs{Action: "found", Template: "p2p", Name: "crew"}))
 	mem := must(e.RegisterSession(root, "", "", "claude"))
 	must(e.Agent(lead.Token, AgentArgs{Action: "admit", Name: mem.Name, Role: "peer"}))
-	_, err = e.Agent(mem.Token, AgentArgs{Action: "close"})
-	refusedRule(t, err, "team_gate.close_not_gate")
+	refuses(t, "team_gate.close_not_gate")(e.Agent(mem.Token, AgentArgs{Action: "close"}))
 	must(e.Agent(lead.Token, AgentArgs{Action: "spawn", Template: "dual-lens", Name: "dl", Task: "?"}))
-	_, err = e.Agent(tokenOf(t, e, "dl-chair"), AgentArgs{Action: "close"})
-	refusedRule(t, err, "taskforce.close_by_caller")
-	_, err = e.Agent(mem.Token, AgentArgs{Action: "close", Team: "dl"})
-	refusedRule(t, err, "taskforce.not_yours")
+	refuses(t, "taskforce.close_by_caller")(e.Agent(tokenOf(t, e, "dl-chair"), AgentArgs{Action: "close"}))
+	refuses(t, "taskforce.not_yours")(e.Agent(mem.Token, AgentArgs{Action: "close", Team: "dl"}))
 	must(e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Name: "w", Task: "t"}))
 	e.mu.Lock()
 	w, _ := e.pWhere(`name=?`, "w")
 	own, _ := e.team(w.TeamID)
-	_, err = e.closeFor(w, own, "")
+	_, err := e.closeFor(w, own, "")
 	e.mu.Unlock()
-	refusedRule(t, err, "team_gate.close_headless")
+	refused(t, err, "team_gate.close_headless")
 }
 
 func TestAgentResumeAndTail(t *testing.T) {
@@ -233,14 +223,11 @@ func TestAgentResumeAndTail(t *testing.T) {
 	lead, p1, _ := leadPeer(t, e)
 	must(e.Kill("p1"))
 	eventually(t, e, "p1 stopped", func() bool { return e.runs[mustID(e, "p1")] == nil })
-	_, err := e.Agent(p1, AgentArgs{Action: "resume", Name: "p2"})
-	refused(t, err, "permission") // peers have no agent tool
+	refuses(t, "permission")(e.Agent(p1, AgentArgs{Action: "resume", Name: "p2"})) // peers have no agent tool
 	other := must(e.RegisterSession(t.TempDir(), "", "", "claude"))
 	must(e.Agent(other.Token, AgentArgs{Action: "found", Template: "lead-peer"}))
-	_, err = e.Agent(other.Token, AgentArgs{Action: "resume", Name: "p1"})
-	refusedRule(t, err, "worker.not_yours")
-	_, err = e.Agent(lead.Token, AgentArgs{Action: "resume", Name: "nobody"})
-	refused(t, err, "not_found")
+	refuses(t, "worker.not_yours")(e.Agent(other.Token, AgentArgs{Action: "resume", Name: "p1"}))
+	refuses(t, "not_found")(e.Agent(lead.Token, AgentArgs{Action: "resume", Name: "nobody"}))
 	if out := must(e.Agent(lead.Token, AgentArgs{Action: "resume", Name: "p1"})); out != "resumed p1" {
 		t.Fatal(out)
 	}
@@ -284,8 +271,7 @@ limits: {depth: 1, concurrency: 1, max_respawn_per_hour: 1}
 	stop()
 	must(e.Resume("w")) // the one resume an hour allows
 	stop()
-	_, err := e.Resume("w")
-	refusedRule(t, err, "limits.max_respawn_per_hour")
+	refuses(t, "limits.max_respawn_per_hour")(e.Resume("w"))
 	if pOf(t, e, "w").Status != StatusParked {
 		t.Fatal("not parked")
 	}
@@ -293,14 +279,12 @@ limits: {depth: 1, concurrency: 1, max_respawn_per_hour: 1}
 	if note.FromID != EngineID || !strings.Contains(note.Body, "w resumed 1 times in the last hour; parked") {
 		t.Fatalf("lead's note: %+v", note)
 	}
-	_, err = e.Resume("w")
-	refusedRule(t, err, "limits.max_respawn_per_hour")
+	refuses(t, "limits.max_respawn_per_hour")(e.Resume("w"))
 	starts := claude.count()
 	must(e.Send(lead.Token, SendArgs{To: "w", Body: "wake up"}))
 	if claude.count() != starts {
 		t.Fatal("mail resumed a parked worker")
 	}
 	// Parked still counts against concurrency 1.
-	_, err = e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Name: "w2", Task: "t"})
-	refusedRule(t, err, "limits.concurrency")
+	refuses(t, "limits.concurrency")(e.Agent(lead.Token, AgentArgs{Action: "spawn", Role: "peer", Name: "w2", Task: "t"}))
 }
