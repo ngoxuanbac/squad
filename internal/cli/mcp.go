@@ -83,8 +83,17 @@ func runMCP(self, version string, in io.Reader, out io.Writer, getenv func(strin
 		if err := json.Unmarshal(sc.Bytes(), &req); err != nil {
 			continue
 		}
+		// A call is cancellable before the next line is read: a cancel that follows it at once finds it.
+		ctx := s.ctx
+		if req.Method == "tools/call" {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithCancel(s.ctx)
+			s.mu.Lock()
+			s.cancels[string(req.ID)] = cancel
+			s.mu.Unlock()
+		}
 		wg.Add(1)
-		go func() { defer wg.Done(); s.handle(req) }()
+		go func() { defer wg.Done(); s.handle(ctx, req) }()
 	}
 	cancel()
 	wg.Wait() // cancelled calls answer at once
@@ -121,8 +130,7 @@ func (s *mcpServer) reply(id json.RawMessage, result any, e *rpcErr) {
 	s.write(m)
 }
 
-func (s *mcpServer) handle(req rpcReq) {
-	ctx := s.ctx
+func (s *mcpServer) handle(ctx context.Context, req rpcReq) {
 	switch req.Method {
 	case "initialize":
 		var p struct {
@@ -146,6 +154,14 @@ func (s *mcpServer) handle(req rpcReq) {
 	case "tools/list":
 		s.reply(req.ID, map[string]any{"tools": tools}, nil)
 	case "tools/call":
+		defer func() { // the cancel runMCP registered for it
+			s.mu.Lock()
+			if c := s.cancels[string(req.ID)]; c != nil { // nil: a client that reused an id
+				c()
+			}
+			delete(s.cancels, string(req.ID))
+			s.mu.Unlock()
+		}()
 		var p struct {
 			Name      string          `json:"name"`
 			Arguments json.RawMessage `json:"arguments"`
@@ -154,16 +170,7 @@ func (s *mcpServer) handle(req rpcReq) {
 			s.reply(req.ID, nil, &rpcErr{Code: -32602, Message: err.Error()})
 			return
 		}
-		cctx, cancel := context.WithCancel(ctx)
-		key := string(req.ID)
-		s.mu.Lock()
-		s.cancels[key] = cancel
-		s.mu.Unlock()
-		text, err := s.call(cctx, p.Name, p.Arguments)
-		s.mu.Lock()
-		delete(s.cancels, key)
-		s.mu.Unlock()
-		cancel()
+		text, err := s.call(ctx, p.Name, p.Arguments)
 		res := map[string]any{}
 		if err != nil {
 			text, res["isError"] = err.Error(), true

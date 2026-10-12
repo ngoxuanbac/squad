@@ -194,7 +194,7 @@ func TestMCPProtocol(t *testing.T) {
 	c.mu.Unlock()
 	c.send(map[string]any{"jsonrpc": "2.0", "id": id, "method": "tools/call",
 		"params": map[string]any{"name": "inbox", "arguments": map[string]any{"wait_seconds": 60}}})
-	time.Sleep(200 * time.Millisecond)
+	// At once: a cancel that comes before the call got going still cancels it.
 	c.send(map[string]any{"jsonrpc": "2.0", "method": "notifications/cancelled", "params": map[string]any{"requestId": id}})
 	r := c.wait(fmt.Sprint(id))
 	if r["result"].(map[string]any)["isError"] != true {
