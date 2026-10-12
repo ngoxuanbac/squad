@@ -8,6 +8,7 @@
 //	@once <key> <directive>       the directive, only the first time any run sees key
 //	@permission                   ask its person for a permission (a hooked session)
 //	@esc                          its person presses Esc: the turn ends there
+//	@child                        start a process of its own that runs until killed (a tool's)
 //
 // A tool call is logged as Claude logs one: a tool_use, then its tool_result; a tool's arguments
 // are checked against its schema as Claude does. With FAKE_HOOKS=1 it is a session with squad's
@@ -20,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -32,6 +34,9 @@ var out = json.NewEncoder(os.Stdout)
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "hang": // what @child starts
+			time.Sleep(time.Hour)
+			return
 		case "--version":
 			fmt.Println("2.1.289 (Claude Code)")
 			return
@@ -259,6 +264,11 @@ func (t *turn) do(directive string) bool {
 	case "permission":
 		if t.hooks != nil {
 			t.hooks.run("PermissionRequest", map[string]any{"tool_name": "Bash"})
+		}
+	case "child":
+		c := exec.Command(os.Args[0], "hang")
+		if c.Start() == nil {
+			mark("child", c.Process.Pid)
 		}
 	case "esc":
 		return false

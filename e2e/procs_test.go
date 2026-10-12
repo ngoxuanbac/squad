@@ -27,13 +27,14 @@ func (e *env) procs() []int {
 	return pids
 }
 
-// treeOfP1 runs p1 until its tree is up (it called a tool, so its MCP server runs) and returns it.
+// treeOfP1 runs p1 until its tree is up (its MCP server, and a process of a tool's that runs until
+// killed) and returns it.
 func treeOfP1(t *testing.T, e *env) []int {
 	t.Helper()
-	leadWithPeer(t, e).mail("done")
+	leadWithPeer(t, e, "@child").mail("done")
 	pids := e.procs()
-	if len(pids) != 2 {
-		t.Fatalf("p1's processes: %v, want itself and its MCP server", pids)
+	if len(pids) != 3 {
+		t.Fatalf("p1's processes: %v, want itself, its MCP server and its child", pids)
 	}
 	return pids
 }

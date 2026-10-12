@@ -1,7 +1,7 @@
 package local
 
 // A process tree is started so that the whole tree can be stopped, the same way on Windows (a job
-// object) and on Linux/macOS (a process group).
+// object) and on Linux (a process group led by a guard, proctree_unix.go).
 
 import (
 	"os/exec"

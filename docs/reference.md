@@ -117,8 +117,9 @@ appended to the system prompt. Its directory is the spawner's, or
   `result` as a fallback.
 - A stopped worker of an open team is resumed when mail comes for it, at most 6 times an hour
   (then `squad resume` by hand).
-- On Windows each worker runs in a job object that is killed with the daemon; on Unix in a
-  process group of its own, and on Linux the kernel kills it when the daemon dies, however it dies.
+- Each worker runs with everything it starts in one tree that is killed when the worker stops or the
+  daemon dies, however it dies: a job object on Windows; on Linux a process group led by a small
+  guard (`squad __squad_guard …`) that ends the group when its pipe to the daemon closes.
 
 ## Template keys (`manifest.yaml`)
 
