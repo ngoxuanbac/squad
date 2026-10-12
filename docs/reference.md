@@ -181,7 +181,7 @@ A gone gate, a solo and a member of a closed team are never woken: their mail wa
 
 | Tool | Arguments | What it does |
 |---|---|---|
-| `send` | `to`, `body`, `kind`, `reply_to`, `op`, `target` | Mail to a member by name (by routing), to `caller` (a taskforce's chair), gate to gate to a team by its name or a solo, or to `board`. `kind` is a free label; `reply_to` the #N of mail you sent or got (else `reply_to.not_in_view`); `op=assign` marks the task of a member that reports to you (its task in ps); board: `op=replace|remove target=#N`. Answers `sent #N`, `duplicate of #N`, or `stored #N but HELD by <rule>` |
+| `send` | `to`, `body`, `kind`, `reply_to`, `op`, `target` | Mail to a member by name (by routing), to `caller` (a taskforce's chair), gate to gate to a team by its name or a solo, or to `board`. `kind` is a free label; `reply_to` the #N of mail you sent or got (else `reply_to.not_in_view`); `op=assign` marks the task of a member that reports to you (its task in ps); board: `op=replace|remove target=#N`. Answers `sent #N`, or `stored #N but HELD by <rule>` |
 | `inbox` | `wait_seconds` (0–600), `view` | Unread mail; waits for mail when there is none. Acked at once, or, for a hooked session in a turn, when the turn ends normally. `view=board`: the team's pins, read-only |
 | `who` | | You, your team (whom you may write to), other teams and solos |
 | `agent` | `action=templates` | The templates |

@@ -75,15 +75,6 @@ func TestMailModel(t *testing.T) {
 		refused(t, err, code)
 	}
 
-	// A duplicate client_msg_id returns the original, writes nothing.
-	d1 := must(e.Send(p1, SendArgs{To: lead.Name, Body: "once", ClientMsgID: "k1"}))
-	d2 := must(e.Send(p1, SendArgs{To: lead.Name, Body: "once", ClientMsgID: "k1"}))
-	if !d2.Duplicate || d2.Seq != d1.Seq || d2.Text() != fmt.Sprintf("duplicate of #%d", d1.Seq) {
-		t.Fatalf("duplicate: %+v", d2)
-	}
-	if n := len(must(e.Inbox(context.Background(), lead.Token, 0))); n != 1 {
-		t.Fatalf("duplicate delivered: %d", n)
-	}
 
 	// Assign: only the member's lead; never across teams.
 	must(e.Send(lead.Token, SendArgs{To: "p2", Body: "Also look at pkg/c", Op: "assign"}))
@@ -201,7 +192,7 @@ func TestRoutingRulesCcAndHold(t *testing.T) {
 	if notes != 1 || heldCopies != 4 {
 		t.Fatalf("%d hold notices, %d held copies", notes, heldCopies)
 	}
-	// Held mail is not given; a duplicate of it reports the hold.
+	// Held mail is not given.
 	for _, m := range must(e.Inbox(context.Background(), lead.Token, 0)) {
 		if m.Body == "three" || m.Body == "four" {
 			t.Fatal("held mail given")

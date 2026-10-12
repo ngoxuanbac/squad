@@ -16,13 +16,11 @@ type SendArgs struct {
 	ReplyTo     string `json:"reply_to,omitempty"` // #N of mail the sender sent or got
 	Op          string `json:"op,omitempty"`       // assign (a task to a member that reports to the sender) | replace | remove (board)
 	Target      string `json:"target,omitempty"`   // board: #N of the pin to replace or remove
-	ClientMsgID string `json:"client_msg_id,omitempty"`
 }
 
 // SendResult is what a send did.
 type SendResult struct {
 	Seq       int64  `json:"seq"` // the mail's #N
-	Duplicate bool   `json:"duplicate,omitempty"`
 	Held      bool   `json:"held,omitempty"`
 	Rule      string `json:"rule,omitempty"` // the rule that holds it
 }
@@ -30,8 +28,6 @@ type SendResult struct {
 // Text is the result as the model reads it.
 func (r SendResult) Text() string {
 	switch {
-	case r.Duplicate:
-		return fmt.Sprintf("duplicate of #%d", r.Seq)
 	case r.Held:
 		return fmt.Sprintf("stored #%d but HELD by %s: not delivered until an admin releases it", r.Seq, r.Rule)
 	default:
@@ -46,7 +42,7 @@ const (
 	holdNoticeKey = "hold"
 )
 
-// Send is the send tool. In order: the duplicate check, the caller's tool, the board, the
+// Send is the send tool. In order: the caller's tool, the board, the
 // recipient and its routing (or the gate-to-gate rule between teams), an assignment, reply_to, then
 // the rate limit, which holds mail instead of refusing it; then the mail is stored, copied to the
 // rule's cc roles, and handed over.
@@ -76,17 +72,6 @@ func (e *Engine) send(p *Participant, a SendArgs) (SendResult, error) {
 	target, err := e.ref(a.Target)
 	if err != nil {
 		return SendResult{}, err
-	}
-	if a.ClientMsgID != "" {
-		var id int64
-		var held string
-		if e.db.QueryRow(`SELECT id, held_reason FROM mail WHERE from_id=? AND client_msg_id=?`, p.ID, a.ClientMsgID).Scan(&id, &held) == nil {
-			r := SendResult{Seq: id, Duplicate: true, Held: held != ""}
-			if r.Held {
-				r.Rule = RuleRate // the rate limit is the only hold
-			}
-			return r, nil
-		}
 	}
 	own, err := e.team(p.TeamID)
 	if err != nil {
@@ -134,7 +119,7 @@ func (e *Engine) send(p *Participant, a SendArgs) (SendResult, error) {
 	if err != nil {
 		return SendResult{}, err
 	}
-	id, err := e.insertMail(p.ID, q.ID, p.TeamID, a.Body, a.Kind, a.Op, replyTo, 0, a.ClientMsgID, held)
+	id, err := e.insertMail(p.ID, q.ID, p.TeamID, a.Body, a.Kind, a.Op, replyTo, 0, held)
 	if err != nil {
 		return SendResult{}, err
 	}
@@ -190,9 +175,9 @@ func (e *Engine) inView(p *Participant, id int64) error {
 }
 
 // insertMail stores one message and returns its #N.
-func (e *Engine) insertMail(from, to, teamID, body, kind, op string, replyTo, target int64, clientID, held string) (int64, error) {
-	res, err := e.db.Exec(`INSERT INTO mail(team_id,from_id,to_id,body,created_at,kind,op,reply_to,target,client_msg_id,held_reason)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?)`, teamID, from, to, body, now(), kind, op, replyTo, target, clientID, held)
+func (e *Engine) insertMail(from, to, teamID, body, kind, op string, replyTo, target int64, held string) (int64, error) {
+	res, err := e.db.Exec(`INSERT INTO mail(team_id,from_id,to_id,body,created_at,kind,op,reply_to,target,held_reason)
+		VALUES(?,?,?,?,?,?,?,?,?,?)`, teamID, from, to, body, now(), kind, op, replyTo, target, held)
 	if err != nil {
 		return 0, err
 	}
@@ -201,7 +186,7 @@ func (e *Engine) insertMail(from, to, teamID, body, kind, op string, replyTo, ta
 
 // engineMail is mail from the engine to p (a notice, a timer, a note about a limit), handed over.
 func (e *Engine) engineMail(p *Participant, kind, body string) {
-	if _, err := e.insertMail(EngineID, p.ID, p.TeamID, body, kind, "", 0, 0, "", ""); err == nil {
+	if _, err := e.insertMail(EngineID, p.ID, p.TeamID, body, kind, "", 0, 0, ""); err == nil {
 		e.handOver(p)
 	}
 }

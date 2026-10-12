@@ -134,7 +134,7 @@ func (e *Engine) newWorker(p *Participant, t *Team, role, name, dir, model, task
 		return "", err
 	}
 	// The task is the first mail; startWorker hands it over.
-	if _, err := e.insertMail(p.ID, q.ID, p.TeamID, task, "", "assign", 0, 0, "", ""); err != nil {
+	if _, err := e.insertMail(p.ID, q.ID, p.TeamID, task, "", "assign", 0, 0, ""); err != nil {
 		return "", err
 	}
 	_, _ = e.db.Exec(`UPDATE participants SET task=? WHERE id=?`, title(task), q.ID)

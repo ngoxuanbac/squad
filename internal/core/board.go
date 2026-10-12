@@ -58,7 +58,7 @@ func (e *Engine) pin(p *Participant, own *Team, a SendArgs, replyTo, target int6
 			return SendResult{}, err
 		}
 	}
-	id, err := e.insertMail(p.ID, AddrBoard, p.TeamID, a.Body, a.Kind, a.Op, replyTo, target, a.ClientMsgID, "")
+	id, err := e.insertMail(p.ID, AddrBoard, p.TeamID, a.Body, a.Kind, a.Op, replyTo, target, "")
 	if err != nil {
 		return SendResult{}, err
 	}
