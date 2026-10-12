@@ -123,7 +123,7 @@ func golden(t *testing.T, name string, got []byte) {
 	}
 	want, err := os.ReadFile(path)
 	must(t, err)
-	if string(want) != string(got) {
+	if strings.ReplaceAll(string(want), "\r\n", "\n") != string(got) { // a Windows checkout may have CRLF
 		t.Errorf("%s changed (go test ./e2e -run TestViewContract -update, if on purpose); got:\n%s", path, got)
 	}
 }

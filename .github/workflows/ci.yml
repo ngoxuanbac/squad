@@ -1,0 +1,41 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4 # the e2e contract test runs the plugin's own test with node
+        with:
+          node-version: 24
+      - name: plugin dependencies
+        working-directory: extensions/paseo
+        run: npm ci
+      - run: go vet ./...
+      - name: tests, every package above 80% coverage
+        shell: bash
+        run: |
+          go test -count=1 -cover ./... | tee cover.txt
+          awk '/coverage: [0-9.]+%/ && !/cmd\/squad/ {
+                 for (i = 1; i <= NF; i++) if ($i == "coverage:") { p = $(i+1); sub("%", "", p) }
+                 if (p + 0 < 80) { print "below 80%: " $0; bad = 1 }
+               } END { exit bad }' cover.txt
+      - name: race detector
+        if: runner.os == 'Linux'
+        run: go test -race -count=1 ./internal/... ./manifests/...
+      - name: staticcheck
+        if: runner.os == 'Linux'
+        run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+      - name: plugin
+        working-directory: extensions/paseo
+        run: |
+          npx tsc --noEmit
+          npm test
